@@ -1,0 +1,28 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      PORT: "8080"
+      # gcloud auth application-default login で作った認証情報をコンテナから読む
+      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
+    volumes:
+      # 認証情報はイメージに焼き込まず、読み取り専用でマウントする
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      PORT: "3000"
+      # サーバー側（Route Handler）からはコンテナ名でGoに届く
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
