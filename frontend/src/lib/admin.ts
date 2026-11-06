@@ -21,6 +21,8 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+export const getMe = () => adminFetch<{ email: string; expiresAt: string }>("me");
+
 export const listCharacters = () => adminFetch<Character[]>("characters");
 
 export const createCharacter = (c: Character) =>

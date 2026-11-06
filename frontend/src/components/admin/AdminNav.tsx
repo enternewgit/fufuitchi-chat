@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getMe } from "@/lib/admin";
 
 const LINKS = [
   { href: "/admin/characters", label: "キャラ設定" },
@@ -11,6 +13,13 @@ const LINKS = [
 export default function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    getMe()
+      .then((me) => setEmail(me.email))
+      .catch(() => {});
+  }, []);
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -18,7 +27,7 @@ export default function AdminNav() {
   };
 
   return (
-    <nav className="flex items-center gap-4 border-b border-line pb-3 text-sm">
+    <nav className="flex flex-wrap items-center gap-4 border-b border-line pb-3 text-sm">
       <span className="font-bold">管理画面</span>
       {LINKS.map((l) => (
         <Link
@@ -29,7 +38,8 @@ export default function AdminNav() {
           {l.label}
         </Link>
       ))}
-      <button type="button" onClick={logout} className="ml-auto text-muted hover:underline">
+      <span className="ml-auto text-muted">{email}</span>
+      <button type="button" onClick={logout} className="text-muted hover:underline">
         ログアウト
       </button>
     </nav>

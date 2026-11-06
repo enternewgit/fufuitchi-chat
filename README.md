@@ -16,13 +16,23 @@
 ## セットアップ
 
 ```bash
-cp .env.example .env          # GEMINI_API_KEY と ADMIN_TOKEN を埋める
+cp .env.example .env          # GEMINI_API_KEY、GOOGLE_CLIENT_ID、ADMIN_EMAILS を埋める
 docker compose up --build
 ```
 
 - フロントエンド: http://localhost:3000
-- 管理画面: http://localhost:3000/admin （`.env` の `ADMIN_TOKEN` でログイン）
+- 管理画面: http://localhost:3000/admin （`ADMIN_EMAILS` に入れた Google アカウントでログイン）
 - バックエンド: http://localhost:8080/healthz
+
+### 管理者ログイン（Google）
+
+ブラウザの「Sign in with Google」が受け取った ID トークンを Go が検証し、`ADMIN_EMAILS` に入っているアドレスだけ管理者として通します。
+クライアントシークレットは使わないので、サーバーに秘密を置く必要はありません。セッションはメモリに保存され、backend を再起動すると全員ログアウトになります。
+
+1. Google Cloud Console の「API とサービス」→「認証情報」で、OAuth クライアントID（種類: ウェブアプリケーション）を作る
+2. 「承認済みの JavaScript 生成元」に `http://localhost` と `http://localhost:3000` を追加する（公開するならそのドメインも）
+3. `.env` の `GOOGLE_CLIENT_ID` にクライアントID、`ADMIN_EMAILS` に自分のメールアドレスを入れる
+4. `docker compose up --build`（クライアントIDは frontend のビルド時に埋め込まれる）
 
 キャラ設定と会話ログはメモリに保存されるので、backend を再起動すると `data/characters/` の内容に戻り、ログは消えます。
 

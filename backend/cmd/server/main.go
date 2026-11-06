@@ -11,6 +11,7 @@ import (
 	"time"
 	_ "time/tzdata" // distroless にはタイムゾーンのデータがないので埋め込む
 
+	"github.com/enternewgit/fufuitchi-chat/backend/internal/auth"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/config"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/handler"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/llm"
@@ -24,8 +25,9 @@ func main() {
 	defer stop()
 
 	cfg := config.Load()
-	if cfg.AdminToken == "" || cfg.AdminToken == "change-me" {
-		log.Print("WARNING: ADMIN_TOKEN が未設定か初期値のままです")
+	allow := auth.ParseAllowlist(cfg.AdminEmails)
+	if cfg.GoogleClientID == "" || len(allow) == 0 {
+		log.Print("WARNING: GOOGLE_CLIENT_ID か ADMIN_EMAILS が未設定なので、管理画面にログインできません")
 	}
 
 	chars := memory.NewCharacterRepo()
@@ -50,6 +52,8 @@ func main() {
 	chatH := handler.NewChatHandler(service.NewChatService(chars, messages, gen, memo))
 	charH := handler.NewCharacterHandler(chars)
 	adminH := handler.NewAdminHandler(chars, messages)
+	sessions := auth.NewSessions(7 * 24 * time.Hour)
+	authH := handler.NewAuthHandler(auth.GoogleVerifier{ClientID: cfg.GoogleClientID}, allow, sessions)
 
 	mux := http.NewServeMux()
 
@@ -63,14 +67,18 @@ func main() {
 	// 比較モードでは1回の送信で2リクエスト来るので、20回分まで連続で受け付ける
 	mux.Handle("POST /api/chat", middleware.RateLimit(20, 3*time.Second)(http.HandlerFunc(chatH.Post)))
 
+	mux.Handle("POST /api/auth/google", middleware.RateLimit(10, 6*time.Second)(http.HandlerFunc(authH.Google)))
+	mux.HandleFunc("POST /api/auth/logout", authH.Logout)
+
 	admin := http.NewServeMux()
+	admin.HandleFunc("GET /api/admin/me", authH.Me)
 	admin.HandleFunc("GET /api/admin/characters", adminH.ListCharacters)
 	admin.HandleFunc("POST /api/admin/characters", adminH.CreateCharacter)
 	admin.HandleFunc("PUT /api/admin/characters/{id}", adminH.UpdateCharacter)
 	admin.HandleFunc("DELETE /api/admin/characters/{id}", adminH.DeleteCharacter)
 	admin.HandleFunc("GET /api/admin/logs", adminH.ListLogs)
 	admin.HandleFunc("GET /api/admin/logs/{sessionId}", adminH.GetLog)
-	mux.Handle("/api/admin/", middleware.AdminAuth(cfg.AdminToken)(admin))
+	mux.Handle("/api/admin/", middleware.AdminAuth(sessions)(admin))
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

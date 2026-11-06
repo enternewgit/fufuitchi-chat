@@ -2,7 +2,6 @@
 package middleware
 
 import (
-	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net"
@@ -10,19 +9,26 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/enternewgit/fufuitchi-chat/backend/internal/auth"
 )
 
-// AdminAuth は Authorization: Bearer <token> を ADMIN_TOKEN と比較する。
-// token が空なら、設定ミスとみなしてすべて拒否する。
-func AdminAuth(token string) func(http.Handler) http.Handler {
+// AdminAuth は Authorization: Bearer <セッショントークン> が有効なセッションか確認する。
+// 有効なら、ログイン中の管理者を context に入れて次に渡す。
+func AdminAuth(sessions *auth.Sessions) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-			if token == "" || !ok || subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
+			token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if !ok || token == "" {
 				writeError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
-			next.ServeHTTP(w, r)
+			sess, ok := sessions.Lookup(token)
+			if !ok {
+				writeError(w, http.StatusUnauthorized, "unauthorized")
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(auth.WithSession(r.Context(), sess)))
 		})
 	}
 }

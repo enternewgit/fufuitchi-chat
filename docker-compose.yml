@@ -17,6 +17,8 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+        # 管理者ログインの Google ボタンに使う（backend の GOOGLE_CLIENT_ID と同じ値）
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     ports:
       - "3000:3000"
     env_file: .env

@@ -5,28 +5,43 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/enternewgit/fufuitchi-chat/backend/internal/auth"
 )
 
 var ok = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 func TestAdminAuth(t *testing.T) {
+	sessions := auth.NewSessions(time.Hour)
+	token, _, err := sessions.Create("admin@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []struct {
-		token, header string
-		want          int
+		header string
+		want   int
 	}{
-		{"secret", "Bearer secret", http.StatusOK},
-		{"secret", "Bearer wrong", http.StatusUnauthorized},
-		{"secret", "secret", http.StatusUnauthorized},
-		{"secret", "", http.StatusUnauthorized},
-		{"", "Bearer ", http.StatusUnauthorized}, // ADMIN_TOKEN 未設定ならすべて拒否
+		{"Bearer " + token, http.StatusOK},
+		{"Bearer wrong", http.StatusUnauthorized},
+		{token, http.StatusUnauthorized},
+		{"", http.StatusUnauthorized},
+		{"Bearer ", http.StatusUnauthorized},
 	}
 	for _, tt := range tests {
+		var got auth.Session
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got, _ = auth.FromContext(r.Context())
+		})
 		req := httptest.NewRequest("GET", "/api/admin/characters", nil)
 		req.Header.Set("Authorization", tt.header)
 		rec := httptest.NewRecorder()
-		AdminAuth(tt.token)(ok).ServeHTTP(rec, req)
+		AdminAuth(sessions)(next).ServeHTTP(rec, req)
 		if rec.Code != tt.want {
-			t.Errorf("token=%q header=%q: got %d, want %d", tt.token, tt.header, rec.Code, tt.want)
+			t.Errorf("header=%q: got %d, want %d", tt.header, rec.Code, tt.want)
+		}
+		if tt.want == http.StatusOK && got.Email != "admin@example.com" {
+			t.Errorf("context のセッション = %+v", got)
 		}
 	}
 }
