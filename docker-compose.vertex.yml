@@ -1,0 +1,17 @@
+# Vertex AI（チューニング済みモデル）を使うときに重ねる設定。
+#   1. gcloud auth application-default login を済ませる
+#   2. .env の GEMINI_API_KEY を空にして、GOOGLE_CLOUD_PROJECT を埋める
+#   3. docker compose -f docker-compose.yml -f docker-compose.vertex.yml up --build
+services:
+  backend:
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /gcloud/application_default_credentials.json
+    volumes:
+      # 認証情報はイメージに焼き込まず、読み取り専用でマウントする。
+      # create_host_path: false にして、ディレクトリがないときに root 所有で作られるのを防ぐ
+      - type: bind
+        source: ${HOME}/.config/gcloud
+        target: /gcloud
+        read_only: true
+        bind:
+          create_host_path: false

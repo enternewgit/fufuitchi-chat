@@ -6,11 +6,11 @@ services:
     env_file: .env
     environment:
       PORT: "8080"
-      # gcloud auth application-default login で作った認証情報をコンテナから読む
-      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
+      DATA_DIR: /data
+      TZ: Asia/Tokyo
     volumes:
-      # 認証情報はイメージに焼き込まず、読み取り専用でマウントする
-      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+      # キャラシート（characters/）と学習データ（processed/、丸暗記率の計算に使う）
+      - ./data:/data:ro
 
   frontend:
     build:

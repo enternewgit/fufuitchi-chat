@@ -14,3 +14,12 @@ export function getSessionId(): string {
     return crypto.randomUUID();
   }
 }
+
+// resetSessionId は新しい会話を始めるときに呼ぶ。
+export function resetSessionId(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // 使えない環境では何もしない
+  }
+}
