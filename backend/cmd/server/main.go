@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 	_ "time/tzdata" // distroless にはタイムゾーンのデータがないので埋め込む
@@ -36,6 +38,9 @@ func main() {
 		log.Fatalf("load characters: %v", err)
 	}
 	log.Printf("loaded %d characters", n)
+	if err := applyTunedModelEnv(ctx, chars); err != nil {
+		log.Fatalf("tuned model env: %v", err)
+	}
 	messages := memory.NewMessageRepo()
 
 	memo, err := service.LoadMemorizer(filepath.Join(cfg.DataDir, "processed"))
@@ -98,4 +103,28 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+}
+
+// applyTunedModelEnv は、環境変数 TUNED_MODEL_<キャラID> があれば、そのキャラの tunedModel を上書きする。
+// チューニング済みモデルのエンドポイントはプロジェクトごとに違うので、
+// キャラシート（リポジトリに入れる）ではなく .env に置く。
+// キャラIDは大文字にし、- を _ に置き換える（例: tsukuyomi → TUNED_MODEL_TSUKUYOMI）。
+func applyTunedModelEnv(ctx context.Context, chars *memory.CharacterRepo) error {
+	cs, err := chars.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, c := range cs {
+		key := "TUNED_MODEL_" + strings.ToUpper(strings.ReplaceAll(c.ID, "-", "_"))
+		v := os.Getenv(key)
+		if v == "" {
+			continue
+		}
+		c.TunedModel = v
+		if err := chars.Save(ctx, c); err != nil {
+			return err
+		}
+		log.Printf("%s: tuned model from %s", c.ID, key)
+	}
+	return nil
 }

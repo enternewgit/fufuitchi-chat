@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { Overlap } from "@/types";
 
 export type ChatMessage = {
   role: "user" | "model";
   content: string;
   pending?: boolean; // 返答を受信中
   error?: string;
-  memorization?: number; // 学習データとの一致率（0〜1）
+  overlap?: Overlap; // 学習データとの重なり
 };
 
 export default function MessageList({
@@ -40,12 +41,12 @@ export default function MessageList({
               {m.content || (m.pending ? "…" : "")}
               {m.error && <span className="text-red-600">{m.error}</span>}
             </div>
-            {m.role === "model" && m.memorization !== undefined && (
+            {m.role === "model" && m.overlap && (
               <p
                 className="mt-1 text-xs text-muted"
-                title="返答のうち、学習データのお返事とそのまま一致している部分の割合"
+                title="学習データのお返事と、最長で何文字連続して同じか（記号・空白は除く）"
               >
-                学習データとの一致率 {Math.round(m.memorization * 100)}%
+                {formatOverlap(m.overlap)}
               </p>
             )}
           </div>
@@ -54,4 +55,8 @@ export default function MessageList({
       <div ref={bottomRef} />
     </div>
   );
+}
+
+export function formatOverlap(o: Overlap): string {
+  return o.exact ? "学習データと完全一致" : `学習データと最長 ${o.longest} 文字一致`;
 }

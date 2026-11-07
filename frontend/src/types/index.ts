@@ -16,6 +16,13 @@ export type Character = {
   systemPrompt: string;
   baseModel: string;
   tunedModel: string;
+  tunedSystemPrompt: string;
+};
+
+// 返答と学習データのお返事の重なり
+export type Overlap = {
+  longest: number; // 最も長く連続して一致した文字数（記号・空白は除く）
+  exact: boolean; // お返事のどれかと丸ごと同じ
 };
 
 // base: プロンプト版 / tuned: チューニング版
@@ -28,7 +35,7 @@ export type Message = {
   role: "user" | "model";
   content: string;
   createdAt: string;
-  memorization?: number;
+  overlap?: Overlap;
 };
 
 export type SessionSummary = {
@@ -42,5 +49,5 @@ export type SessionSummary = {
 // POST /api/chat が SSE で送ってくるイベント
 export type ChatEvent =
   | { type: "delta"; text: string }
-  | { type: "done"; memorization?: number }
+  | { type: "done"; overlap?: Overlap }
   | { type: "error"; error: string };

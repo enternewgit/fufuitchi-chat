@@ -11,6 +11,7 @@ const EMPTY: Character = {
   systemPrompt: "",
   baseModel: "gemini-3.5-flash",
   tunedModel: "",
+  tunedSystemPrompt: "",
 };
 
 export default function CharacterEditor() {
@@ -128,6 +129,9 @@ export default function CharacterEditor() {
         </Field>
         <Field label="チューニング済みモデル（空なら未作成）">
           <input {...field("tunedModel")} className={input} placeholder="projects/…/endpoints/…" />
+        </Field>
+        <Field label="チューニング版のシステムプロンプト（空なら渡さない。システムプロンプトなしで学習したなら空のままが学習時と同じ条件）">
+          <textarea {...field("tunedSystemPrompt")} rows={4} className={`${input} font-mono text-sm`} />
         </Field>
         {message && <p className="text-sm text-green-600">{message}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}

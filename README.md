@@ -48,15 +48,17 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/work -w /work/bac
   golang:1.26-alpine go run ./cmd/prepare-dataset
 ```
 
-整形後のデータは、チャット中に「学習データとの一致率」を計算するのにも使います（backend の再起動で読み込み直します）。
+整形後のデータは、チャット中に「学習データとの最長一致」（お返事と最長で何文字連続して同じか）を計算するのにも使います（backend の再起動で読み込み直します）。
 
 ## チューニング済みモデルを使う
 
-チューニング済みモデルは Vertex AI でしか呼べません。
+チューニング済みモデルは Vertex AI でしか呼べません。チューニングジョブは `scripts/tuning.sh` で作れます（Gemini 3 は Console からはチューニングできない）。
 
 1. `gcloud auth application-default login`
-2. `.env` の `GEMINI_API_KEY` を空にして、`GOOGLE_CLOUD_PROJECT` を埋める
-3. キャラシートの `tunedModel` にモデルIDを入れる（管理画面からも設定可）
+2. `.env` の `GEMINI_API_KEY` を空にして、`GOOGLE_CLOUD_PROJECT` を埋め、`GOOGLE_CLOUD_LOCATION=us` にする
+   （Gemini 3 のチューニング済みモデルは `us` マルチリージョンにある。`global` からは呼べない）
+3. `.env` の `TUNED_MODEL_<キャラID>` にチューニング済みモデルのエンドポイントを入れる（`scripts/tuning.sh status <ジョブID>` の `tunedModel.endpoint`）。
+   キャラシートの `tunedModel` より優先されるので、プロジェクト固有の値をリポジトリに入れずに済む
 4. 起動する
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.vertex.yml up --build

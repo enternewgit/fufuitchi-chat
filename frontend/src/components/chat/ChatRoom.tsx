@@ -60,12 +60,12 @@ export default function ChatRoom({ characterId }: { characterId: string }) {
     await Promise.all(
       variants.map(async (v) => {
         try {
-          const { memorization } = await sendMessage(
+          const { overlap } = await sendMessage(
             { characterId, sessionId, variant: v, message: text },
             (delta) => updateLast(v, (m) => ({ ...m, content: m.content + delta })),
             abort.signal,
           );
-          updateLast(v, (m) => ({ ...m, pending: false, memorization }));
+          updateLast(v, (m) => ({ ...m, pending: false, overlap }));
         } catch (e) {
           if (abort.signal.aborted) return;
           updateLast(v, (m) => ({ ...m, pending: false, error: (e as Error).message }));

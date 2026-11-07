@@ -11,8 +11,13 @@ import (
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/repository"
 )
 
-// historyLimit はモデルに渡す直近の発言数。
-const historyLimit = 20
+// モデルに渡す直近の発言数。
+// チューニング版は長くても2往復の会話で学習したので、長い履歴を渡すと
+// 過去の言い回しに引っぱられやすい。学習データに近い3往復までにする
+const (
+	baseHistoryLimit  = 20
+	tunedHistoryLimit = 6
+)
 
 var (
 	ErrCharacterNotFound = errors.New("character not found")
@@ -39,15 +44,15 @@ type ChatInput struct {
 }
 
 type ChatResult struct {
-	Reply        string
-	Memorization *float64
+	Reply   string
+	Overlap *model.Overlap
 }
 
 // Chat は会話を1往復進める。返答は onDelta に少しずつ渡す。
 //  1. キャラ設定を取得
 //  2. セッションの直近の履歴を取得
 //  3. モデルを呼び出し、返答をストリーミング
-//  4. 丸暗記率を計算
+//  4. 学習データとの一致を計算
 //  5. ユーザー発言と返答を保存
 func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(string) error) (ChatResult, error) {
 	c, err := s.chars.Get(ctx, in.CharacterID)
@@ -58,19 +63,19 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 		return ChatResult{}, err
 	}
 
-	modelID := c.BaseModel
+	modelID, systemPrompt, limit := c.BaseModel, c.SystemPrompt, baseHistoryLimit
 	if in.Variant == model.VariantTuned {
 		if c.TunedModel == "" {
 			return ChatResult{}, ErrNoTunedModel
 		}
-		modelID = c.TunedModel
+		modelID, systemPrompt, limit = c.TunedModel, c.TunedSystemPrompt, tunedHistoryLimit
 	}
 
 	history, err := s.messages.History(ctx, repository.HistoryQuery{
 		SessionID:   in.SessionID,
 		CharacterID: in.CharacterID,
 		Variant:     in.Variant,
-		Limit:       historyLimit,
+		Limit:       limit,
 	})
 	if err != nil {
 		return ChatResult{}, err
@@ -79,7 +84,7 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 	userAt := s.now()
 	reply, err := s.llm.Stream(ctx, llm.Request{
 		Model:        modelID,
-		SystemPrompt: c.SystemPrompt,
+		SystemPrompt: systemPrompt,
 		History:      history,
 		Message:      in.Message,
 	}, onDelta)
@@ -87,21 +92,21 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 		return ChatResult{}, err
 	}
 
-	var memo *float64
+	var overlap *model.Overlap
 	if s.memo != nil {
-		if score, ok := s.memo.Score(reply); ok {
-			memo = &score
+		if o, ok := s.memo.Overlap(reply); ok {
+			overlap = &o
 		}
 	}
 
 	base := model.Message{SessionID: in.SessionID, CharacterID: in.CharacterID, Variant: in.Variant}
 	user, bot := base, base
 	user.Role, user.Content, user.CreatedAt = "user", in.Message, userAt
-	bot.Role, bot.Content, bot.CreatedAt, bot.Memorization = "model", reply, s.now(), memo
+	bot.Role, bot.Content, bot.CreatedAt, bot.Overlap = "model", reply, s.now(), overlap
 	// 返答の送信後に保存するので、クライアントが切断していても保存できるよう ctx を切り離す
 	if err := s.messages.Append(context.WithoutCancel(ctx), user, bot); err != nil {
 		return ChatResult{}, err
 	}
 
-	return ChatResult{Reply: reply, Memorization: memo}, nil
+	return ChatResult{Reply: reply, Overlap: overlap}, nil
 }

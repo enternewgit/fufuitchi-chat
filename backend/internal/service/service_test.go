@@ -11,21 +11,28 @@ import (
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/repository/memory"
 )
 
-func TestMemorizerScore(t *testing.T) {
+func TestMemorizerOverlap(t *testing.T) {
 	m := &Memorizer{}
 	m.Add("絵に描いた餅です！")
 	m.Add("お水が一番落ち着きます。")
 
-	if s, ok := m.Score("絵に描いた餅です"); !ok || s != 1 {
-		t.Errorf("完全一致: score = %v, %v", s, ok)
+	tests := []struct {
+		output  string
+		longest int
+		exact   bool
+	}{
+		{"絵に描いた餅です", 8, true},      // 記号を除くと丸ごと同じ
+		{"好物は絵に描いた餅ですよ", 8, false}, // 一部が一致
+		{"今日はいい天気ですね", 2, false},   // 「です」程度しか一致しない
+		{"はい", 1, false},           // 短い返答でも値が膨らまない（「い」の1文字だけ）
 	}
-	if s, ok := m.Score("今日はいい天気ですね"); !ok || s > 0.2 {
-		t.Errorf("無関係: score = %v, %v", s, ok)
+	for _, tt := range tests {
+		o, ok := m.Overlap(tt.output)
+		if !ok || o.Longest != tt.longest || o.Exact != tt.exact {
+			t.Errorf("%q: got %+v, %v; want longest=%d exact=%v", tt.output, o, ok, tt.longest, tt.exact)
+		}
 	}
-	if _, ok := m.Score("はい"); ok {
-		t.Error("短すぎる返答は ok=false のはず")
-	}
-	if _, ok := (&Memorizer{}).Score("絵に描いた餅です"); ok {
+	if _, ok := (&Memorizer{}).Overlap("絵に描いた餅です"); ok {
 		t.Error("参照なしは ok=false のはず")
 	}
 }
@@ -66,8 +73,8 @@ func TestChatService(t *testing.T) {
 	if res.Reply != "絵に描いた餅です！" || len(deltas) != 2 {
 		t.Fatalf("reply = %q, deltas = %v", res.Reply, deltas)
 	}
-	if res.Memorization == nil || *res.Memorization != 1 {
-		t.Fatalf("memorization = %v", res.Memorization)
+	if res.Overlap == nil || !res.Overlap.Exact {
+		t.Fatalf("overlap = %+v", res.Overlap)
 	}
 	if gen.got.Model != "base-model" || gen.got.SystemPrompt != "sys" {
 		t.Fatalf("llm request = %+v", gen.got)
@@ -81,6 +88,30 @@ func TestChatService(t *testing.T) {
 	saved, _ := msgs.History(ctx, repository.HistoryQuery{SessionID: "s", CharacterID: "c", Variant: model.VariantBase})
 	if len(saved) != 4 {
 		t.Fatalf("saved = %d messages", len(saved))
+	}
+}
+
+func TestChatServiceTuned(t *testing.T) {
+	ctx := context.Background()
+	chars := memory.NewCharacterRepo()
+	chars.Save(ctx, model.Character{ID: "c", SystemPrompt: "sys", BaseModel: "base-model", TunedModel: "tuned-model"})
+	gen := &fakeLLM{reply: []string{"はい"}}
+	svc := NewChatService(chars, memory.NewMessageRepo(), gen, nil)
+
+	in := ChatInput{SessionID: "s", CharacterID: "c", Variant: model.VariantTuned, Message: "こんにちは"}
+	for range 5 {
+		if _, err := svc.Chat(ctx, in, func(string) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if gen.got.Model != "tuned-model" {
+		t.Errorf("model = %q", gen.got.Model)
+	}
+	if gen.got.SystemPrompt != "" {
+		t.Errorf("チューニング版には TunedSystemPrompt（空）を渡すはず: %q", gen.got.SystemPrompt)
+	}
+	if len(gen.got.History) != tunedHistoryLimit {
+		t.Errorf("history = %d, want %d", len(gen.got.History), tunedHistoryLimit)
 	}
 }
 

@@ -10,6 +10,9 @@ type Character struct {
 	SystemPrompt string `json:"systemPrompt"`
 	BaseModel    string `json:"baseModel"`  // プロンプト版で使うモデル
 	TunedModel   string `json:"tunedModel"` // チューニング済みモデル（空なら未作成）
+	// TunedSystemPrompt はチューニング版に渡すシステムプロンプト。
+	// 空なら渡さない（システムプロンプトなしで学習したので、学習時と同じ条件になる）
+	TunedSystemPrompt string `json:"tunedSystemPrompt"`
 }
 
 // PublicCharacter は一般ユーザーに返すキャラ情報。システムプロンプトは含めない。
@@ -49,8 +52,14 @@ type Message struct {
 	Role        string    `json:"role"` // "user" or "model"
 	Content     string    `json:"content"`
 	CreatedAt   time.Time `json:"createdAt"`
-	// Memorization は返答が学習データとどれくらい一致したか（0〜1）。model の発言のみ。
-	Memorization *float64 `json:"memorization,omitempty"`
+	// Overlap は返答が学習データとどれくらい一致したか。model の発言のみ。
+	Overlap *Overlap `json:"overlap,omitempty"`
+}
+
+// Overlap は返答と学習データのお返事の重なり。
+type Overlap struct {
+	Longest int  `json:"longest"` // 最も長く連続して一致した文字数（記号・空白は除く）
+	Exact   bool `json:"exact"`   // お返事のどれかと丸ごと同じ
 }
 
 // SessionSummary は管理画面の会話ログ一覧の1行。

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getLog, listCharacters, listLogs, type LogFilter } from "@/lib/admin";
 import type { Character, Message, SessionSummary } from "@/types";
+import { formatOverlap } from "@/components/chat/MessageList";
 
 const VARIANT_LABEL = { base: "プロンプト版", tuned: "チューニング版" } as const;
 
@@ -120,7 +121,7 @@ export default function LogViewer() {
                 <div className="text-xs text-muted">
                   {formatTime(m.createdAt)}・{m.role === "user" ? "ユーザー" : charName(m.characterId)}
                   （{VARIANT_LABEL[m.variant]}）
-                  {m.memorization !== undefined && `・一致率 ${Math.round(m.memorization * 100)}%`}
+                  {m.overlap && `・${formatOverlap(m.overlap)}`}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{m.content}</p>
               </div>

@@ -66,11 +66,13 @@ func (c *Client) Stream(ctx context.Context, req Request, onDelta func(string) e
 	}
 	contents = append(contents, genai.NewContentFromText(req.Message, genai.RoleUser))
 
-	var config *genai.GenerateContentConfig
+	// チューニング済みの Gemini 3 は思考レベル MINIMAL が推奨。
+	// 比較を公平にするため、ベースモデルも同じ設定にする（返答も速くなる）
+	config := &genai.GenerateContentConfig{
+		ThinkingConfig: &genai.ThinkingConfig{ThinkingLevel: genai.ThinkingLevelMinimal},
+	}
 	if req.SystemPrompt != "" {
-		config = &genai.GenerateContentConfig{
-			SystemInstruction: genai.NewContentFromText(req.SystemPrompt, genai.RoleUser),
-		}
+		config.SystemInstruction = genai.NewContentFromText(req.SystemPrompt, genai.RoleUser)
 	}
 
 	var full strings.Builder
