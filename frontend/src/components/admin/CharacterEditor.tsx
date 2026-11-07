@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createCharacter, deleteCharacter, listCharacters, updateCharacter } from "@/lib/admin";
 import type { Character } from "@/types";
+import MemoryStorageNote from "./MemoryStorageNote";
 
 const EMPTY: Character = {
   id: "",
@@ -109,9 +110,9 @@ export default function CharacterEditor() {
       </aside>
 
       <form onSubmit={save} className="space-y-3">
-        <p className="text-xs text-muted">
+        <MemoryStorageNote>
           変更はサーバーのメモリにだけ保存され、再起動すると data/characters/ の内容に戻ります。
-        </p>
+        </MemoryStorageNote>
         <Field label="ID（英小文字・数字・-・_）">
           <input {...field("id")} readOnly={!isNew} className={input} required />
         </Field>

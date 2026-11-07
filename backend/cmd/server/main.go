@@ -61,7 +61,7 @@ func main() {
 	chatH := handler.NewChatHandler(service.NewChatService(chars, messages, gen, memo))
 	charH := handler.NewCharacterHandler(chars)
 	adminH := handler.NewAdminHandler(chars, messages)
-	authH := handler.NewAuthHandler(auth.GoogleVerifier{ClientID: cfg.GoogleClientID}, allow, sessions)
+	authH := handler.NewAuthHandler(auth.GoogleVerifier{ClientID: cfg.GoogleClientID}, allow, sessions, cfg.Storage)
 
 	mux := http.NewServeMux()
 

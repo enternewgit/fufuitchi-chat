@@ -30,7 +30,7 @@ func TestGoogleLogin(t *testing.T) {
 		"stranger":   {Email: "stranger@example.com", EmailVerified: true},
 	}
 	sessions := auth.NewSessions(time.Hour)
-	h := NewAuthHandler(v, auth.ParseAllowlist("admin@example.com"), sessions)
+	h := NewAuthHandler(v, auth.ParseAllowlist("admin@example.com"), sessions, "memory")
 
 	tests := []struct {
 		credential string
@@ -64,7 +64,7 @@ func TestGoogleLogin(t *testing.T) {
 func TestLogout(t *testing.T) {
 	sessions := auth.NewSessions(time.Hour)
 	token, _, _ := sessions.Create(context.Background(), "admin@example.com")
-	h := NewAuthHandler(fakeVerifier{}, auth.Allowlist{}, sessions)
+	h := NewAuthHandler(fakeVerifier{}, auth.Allowlist{}, sessions, "memory")
 
 	req := httptest.NewRequest("POST", "/api/auth/logout", nil)
 	req.Header.Set("Authorization", "Bearer "+token)

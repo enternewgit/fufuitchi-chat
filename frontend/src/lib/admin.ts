@@ -21,7 +21,13 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const getMe = () => adminFetch<{ email: string; expiresAt: string }>("me");
+export type Me = {
+  email: string;
+  expiresAt: string;
+  storage: "memory" | "firestore";
+};
+
+export const getMe = () => adminFetch<Me>("me");
 
 export const listCharacters = () => adminFetch<Character[]>("characters");
 

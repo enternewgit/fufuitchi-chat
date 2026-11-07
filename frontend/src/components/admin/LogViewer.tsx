@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getLog, listCharacters, listLogs, type LogFilter } from "@/lib/admin";
 import type { Character, Message, SessionSummary } from "@/types";
 import { formatOverlap } from "@/components/chat/MessageList";
+import MemoryStorageNote from "./MemoryStorageNote";
 
 const VARIANT_LABEL = { base: "プロンプト版", tuned: "チューニング版" } as const;
 
@@ -90,7 +91,7 @@ export default function LogViewer() {
         </button>
       </form>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-muted">会話ログはサーバーのメモリにだけ保存され、再起動すると消えます。</p>
+      <MemoryStorageNote>会話ログはサーバーのメモリにだけ保存され、再起動すると消えます。</MemoryStorageNote>
 
       <div className="grid gap-6 md:grid-cols-[320px_1fr]">
         <ul className="space-y-1 text-sm">

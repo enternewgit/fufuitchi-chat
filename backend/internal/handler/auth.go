@@ -13,10 +13,11 @@ type AuthHandler struct {
 	verifier auth.Verifier
 	allow    auth.Allowlist
 	sessions auth.SessionStore
+	storage  string // 保存先（管理画面の注意書きの出し分けに使う）
 }
 
-func NewAuthHandler(v auth.Verifier, allow auth.Allowlist, sessions auth.SessionStore) *AuthHandler {
-	return &AuthHandler{verifier: v, allow: allow, sessions: sessions}
+func NewAuthHandler(v auth.Verifier, allow auth.Allowlist, sessions auth.SessionStore, storage string) *AuthHandler {
+	return &AuthHandler{verifier: v, allow: allow, sessions: sessions, storage: storage}
 }
 
 type loginResponse struct {
@@ -69,8 +70,11 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Me は GET /api/admin/me。ログイン中の管理者を返す（AdminAuth の内側で使う）。
+// Me は GET /api/admin/me。ログイン中の管理者と保存先を返す（AdminAuth の内側で使う）。
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.FromContext(r.Context())
-	writeJSON(w, http.StatusOK, sess)
+	writeJSON(w, http.StatusOK, struct {
+		auth.Session
+		Storage string `json:"storage"`
+	}{sess, h.storage})
 }
