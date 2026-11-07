@@ -24,3 +24,6 @@ backend/bin/
 .DS_Store
 .vscode/
 .idea/
+
+# 構成図の HTML（Google Cloud のアイコンが埋め込まれているので上げない。PNG だけ上げる）
+docs/*.html
