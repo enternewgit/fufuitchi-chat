@@ -14,6 +14,10 @@ async function forward(request: NextRequest, { params }: Ctx) {
   }
 
   const { path } = await params;
+  // ".." で管理API以外のパスに抜けられないようにする
+  if (path.some((p) => p === "." || p === ".." || p === "")) {
+    return Response.json({ error: "invalid path" }, { status: 400 });
+  }
   const url = `${backendUrl()}/api/admin/${path.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
   const hasBody = request.method !== "GET" && request.method !== "DELETE";
 

@@ -119,6 +119,17 @@ func clientIP(r *http.Request, trustProxy bool) string {
 	return host
 }
 
+// SecurityHeaders は API の返答に、ブラウザに余計な解釈をさせないためのヘッダーを付ける。
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Logging はリクエストのログを出す。
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

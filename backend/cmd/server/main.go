@@ -91,7 +91,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           middleware.Logging(middleware.CORS(cfg.AllowedOrigin)(mux)),
+		Handler:           middleware.Logging(middleware.SecurityHeaders(middleware.CORS(cfg.AllowedOrigin)(mux))),
 		ReadHeaderTimeout: 10 * time.Second,
 		// WriteTimeout は SSE の返答を途中で切ってしまうので設定しない
 	}

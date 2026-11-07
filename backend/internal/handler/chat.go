@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -15,10 +16,11 @@ import (
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/service"
 )
 
-const (
-	maxMessageRunes = 1000
-	maxIDLen        = 100
-)
+const maxMessageRunes = 1000
+
+// idPattern はセッションIDとユーザーIDの形式（ブラウザが作る UUID を想定）。
+// Firestore のドキュメントIDにも使うので、/ などの記号を通さない
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9-]{1,100}$`)
 
 type ChatHandler struct {
 	svc *service.ChatService
@@ -95,11 +97,11 @@ func (h *ChatHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 func validateChat(req chatRequest) string {
 	switch {
-	case req.CharacterID == "" || len(req.CharacterID) > maxIDLen:
+	case !characterIDPattern.MatchString(req.CharacterID):
 		return "characterId が不正です"
-	case req.SessionID == "" || len(req.SessionID) > maxIDLen:
+	case !idPattern.MatchString(req.SessionID):
 		return "sessionId が不正です"
-	case len(req.UserID) > maxIDLen:
+	case req.UserID != "" && !idPattern.MatchString(req.UserID):
 		return "userId が不正です"
 	case !req.Variant.Valid():
 		return "variant は base か tuned です"

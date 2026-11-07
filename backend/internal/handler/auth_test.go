@@ -73,3 +73,21 @@ func TestLogout(t *testing.T) {
 		t.Fatal("ログアウト後もセッションが残っている")
 	}
 }
+
+func TestValidateChatIDs(t *testing.T) {
+	ok := chatRequest{CharacterID: "tsukuyomi", SessionID: "0b5c3f2e-1d2a-4c1b-9a8e-3f4d5e6f7a8b", Variant: "tuned", Message: "こんにちは"}
+	if msg := validateChat(ok); msg != "" {
+		t.Fatalf("正しいリクエストを弾いた: %s", msg)
+	}
+	bad := []chatRequest{
+		{CharacterID: "tsukuyomi", SessionID: "a/b", Variant: "tuned", Message: "x"},
+		{CharacterID: "tsukuyomi", SessionID: "s", UserID: "../u", Variant: "tuned", Message: "x"},
+		{CharacterID: "a/b", SessionID: "s", Variant: "tuned", Message: "x"},
+		{CharacterID: "tsukuyomi", SessionID: strings.Repeat("a", 101), Variant: "tuned", Message: "x"},
+	}
+	for _, r := range bad {
+		if validateChat(r) == "" {
+			t.Errorf("不正なIDを通した: %+v", r)
+		}
+	}
+}

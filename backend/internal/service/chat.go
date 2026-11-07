@@ -12,12 +12,12 @@ import (
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/repository"
 )
 
-// モデルに渡す直近の発言数（0 なら会話の最初から全部渡す）。
-// チューニング版はチャットの本体なので、会話全体を覚えさせる。
-// ただし長い会話では、過去の言い回しを繰り返しやすくなることがある
+// モデルに渡す直近の発言数。
+// チューニング版はチャットの本体なので、ふつうの会話なら全部覚えていられる量にする。
+// 上限をなくすと、同じ会話で話し続けるほど1回の呼び出しが長くなり、料金を狙った攻撃に使えてしまう
 const (
 	baseHistoryLimit  = 20
-	tunedHistoryLimit = 0
+	tunedHistoryLimit = 100
 	// pastSessionLimit は、同じユーザーの前の会話から引き継ぐ発言数（10往復分）
 	pastSessionLimit = 20
 )
