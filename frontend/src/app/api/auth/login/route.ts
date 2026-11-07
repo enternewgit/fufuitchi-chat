@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
   out.cookies.set(ADMIN_COOKIE, data.token, {
     httpOnly: true,
     sameSite: "strict",
-    secure: request.nextUrl.protocol === "https:",
+    // Cloud Run などプロキシの後ろでは https かどうか分からないので、COOKIE_SECURE で強制できるようにする
+    secure: process.env.COOKIE_SECURE === "true" || request.nextUrl.protocol === "https:",
     path: "/",
     expires: new Date(data.expiresAt),
   });

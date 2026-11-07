@@ -15,6 +15,8 @@ type Config struct {
 	// Storage は保存先。"memory"（再起動で消える）か "firestore"
 	Storage           string
 	FirestoreDatabase string
+	// TrustProxy は X-Forwarded-For を信用するか（Cloud Run ではすべての接続がプロキシ経由になる）
+	TrustProxy bool
 }
 
 func Load() Config {
@@ -29,6 +31,7 @@ func Load() Config {
 		DataDir:           getEnv("DATA_DIR", "../data"),
 		Storage:           getEnv("STORAGE", "memory"),
 		FirestoreDatabase: getEnv("FIRESTORE_DATABASE", "(default)"),
+		TrustProxy:        os.Getenv("TRUST_PROXY") == "true",
 	}
 }
 

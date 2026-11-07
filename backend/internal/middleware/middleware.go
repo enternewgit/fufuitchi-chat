@@ -55,11 +55,12 @@ func CORS(allowedOrigin string) func(http.Handler) http.Handler {
 
 // RateLimit は同じクライアント（IP）からの連打を防ぐ（Gemini の料金対策）。
 // burst 回まで連続で受け付け、その後は every ごとに1回分回復する。
-func RateLimit(burst int, every time.Duration) func(http.Handler) http.Handler {
+// trustProxy が true なら X-Forwarded-For から接続元を判断する（Cloud Run など、プロキシの後ろで動くとき）。
+func RateLimit(burst int, every time.Duration, trustProxy bool) func(http.Handler) http.Handler {
 	l := &limiter{burst: float64(burst), every: every, buckets: map[string]*bucket{}}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !l.allow(clientIP(r), time.Now()) {
+			if !l.allow(clientIP(r, trustProxy), time.Now()) {
 				writeError(w, http.StatusTooManyRequests, "リクエストが多すぎます。少し待ってからもう一度送ってください")
 				return
 			}
@@ -100,7 +101,17 @@ func (l *limiter) allow(key string, now time.Time) bool {
 	return true
 }
 
-func clientIP(r *http.Request) string {
+func clientIP(r *http.Request, trustProxy bool) string {
+	if trustProxy {
+		// プロキシは自分が見た接続元を末尾に足すので、末尾が本当の接続元。
+		// 先頭のほうはクライアントが自由に書けるので信用しない
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+				return ip
+			}
+		}
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

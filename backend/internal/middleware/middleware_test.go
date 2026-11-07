@@ -83,3 +83,15 @@ func TestLimiter(t *testing.T) {
 		t.Fatal("時間がたてば回復するはず")
 	}
 }
+
+func TestClientIP(t *testing.T) {
+	r := httptest.NewRequest("GET", "/", nil)
+	r.RemoteAddr = "10.0.0.1:1234"
+	r.Header.Set("X-Forwarded-For", "6.6.6.6, 1.2.3.4")
+	if got := clientIP(r, false); got != "10.0.0.1" {
+		t.Errorf("プロキシを信用しないときは RemoteAddr: %q", got)
+	}
+	if got := clientIP(r, true); got != "1.2.3.4" {
+		t.Errorf("プロキシを信用するときは末尾の IP（先頭は偽装できる）: %q", got)
+	}
+}

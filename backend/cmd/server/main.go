@@ -73,9 +73,9 @@ func main() {
 	mux.HandleFunc("GET /api/characters", charH.List)
 	mux.HandleFunc("GET /api/characters/{id}", charH.Get)
 	// 比較モードでは1回の送信で2リクエスト来るので、20回分まで連続で受け付ける
-	mux.Handle("POST /api/chat", middleware.RateLimit(20, 3*time.Second)(http.HandlerFunc(chatH.Post)))
+	mux.Handle("POST /api/chat", middleware.RateLimit(20, 3*time.Second, cfg.TrustProxy)(http.HandlerFunc(chatH.Post)))
 
-	mux.Handle("POST /api/auth/google", middleware.RateLimit(10, 6*time.Second)(http.HandlerFunc(authH.Google)))
+	mux.Handle("POST /api/auth/google", middleware.RateLimit(10, 6*time.Second, cfg.TrustProxy)(http.HandlerFunc(authH.Google)))
 	mux.HandleFunc("POST /api/auth/logout", authH.Logout)
 
 	admin := http.NewServeMux()
