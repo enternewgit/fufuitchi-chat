@@ -72,7 +72,8 @@ YAML
 
   echo
   echo "frontend: ${FRONTEND_URL}"
-  echo "backend:  ${BACKEND_URL}/healthz"
+  # /healthz は Cloud Run が予約しているパスなので届かない。動作確認はキャラ一覧で行う
+  echo "backend:  ${BACKEND_URL}/api/characters"
   echo "管理画面の Google ログインには、OAuth クライアントの「承認済みの JavaScript 生成元」に ${FRONTEND_URL} の追加が必要"
 }
 
