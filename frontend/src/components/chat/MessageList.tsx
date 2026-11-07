@@ -9,6 +9,7 @@ export type ChatMessage = {
   pending?: boolean; // 返答を受信中
   error?: string;
   overlap?: Overlap; // 学習データとの重なり
+  fallback?: boolean; // チューニング版が上限に達し、プロンプト版で返答した
 };
 
 export default function MessageList({
@@ -41,6 +42,11 @@ export default function MessageList({
               {m.content || (m.pending ? "…" : "")}
               {m.error && <span className="text-red-600">{m.error}</span>}
             </div>
+            {m.role === "model" && m.fallback && (
+              <p className="mt-1 text-xs text-amber-600">
+                チューニング版の利用上限に達したため、プロンプト版で返答しました
+              </p>
+            )}
             {m.role === "model" && m.overlap && (
               <p
                 className="mt-1 text-xs text-muted"

@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/llm"
@@ -44,8 +45,9 @@ type ChatInput struct {
 }
 
 type ChatResult struct {
-	Reply   string
-	Overlap *model.Overlap
+	Reply    string
+	Overlap  *model.Overlap
+	Fallback bool // チューニング版が上限に達したため、プロンプト版で返答した
 }
 
 // Chat は会話を1往復進める。返答は onDelta に少しずつ渡す。
@@ -82,12 +84,31 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 	}
 
 	userAt := s.now()
+	sent := false
+	trackDelta := func(d string) error {
+		sent = true
+		return onDelta(d)
+	}
 	reply, err := s.llm.Stream(ctx, llm.Request{
 		Model:        modelID,
 		SystemPrompt: systemPrompt,
 		History:      history,
 		Message:      in.Message,
-	}, onDelta)
+	}, trackDelta)
+
+	// チューニング版が Google 側の上限に達したら、プロンプト版のモデルで作り直す。
+	// 返答を途中まで送っていたら、二重にならないよう作り直さない
+	fallback := false
+	if err != nil && in.Variant == model.VariantTuned && !sent && errors.Is(err, llm.ErrQuotaExceeded) {
+		log.Printf("chat: チューニング版が上限に達したのでプロンプト版で返答します: %v", err)
+		fallback = true
+		reply, err = s.llm.Stream(ctx, llm.Request{
+			Model:        c.BaseModel,
+			SystemPrompt: c.SystemPrompt,
+			History:      history,
+			Message:      in.Message,
+		}, onDelta)
+	}
 	if err != nil {
 		return ChatResult{}, err
 	}
@@ -102,11 +123,11 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 	base := model.Message{SessionID: in.SessionID, CharacterID: in.CharacterID, Variant: in.Variant}
 	user, bot := base, base
 	user.Role, user.Content, user.CreatedAt = "user", in.Message, userAt
-	bot.Role, bot.Content, bot.CreatedAt, bot.Overlap = "model", reply, s.now(), overlap
+	bot.Role, bot.Content, bot.CreatedAt, bot.Overlap, bot.Fallback = "model", reply, s.now(), overlap, fallback
 	// 返答の送信後に保存するので、クライアントが切断していても保存できるよう ctx を切り離す
 	if err := s.messages.Append(context.WithoutCancel(ctx), user, bot); err != nil {
 		return ChatResult{}, err
 	}
 
-	return ChatResult{Reply: reply, Overlap: overlap}, nil
+	return ChatResult{Reply: reply, Overlap: overlap, Fallback: fallback}, nil
 }

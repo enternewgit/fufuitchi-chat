@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/llm"
@@ -40,10 +41,16 @@ func TestMemorizerOverlap(t *testing.T) {
 type fakeLLM struct {
 	got   llm.Request
 	reply []string
+	// errFor のモデルを呼んだら、返答を送る前にこのエラーを返す
+	errFor string
+	err    error
 }
 
 func (f *fakeLLM) Stream(ctx context.Context, req llm.Request, onDelta func(string) error) (string, error) {
 	f.got = req
+	if f.errFor != "" && req.Model == f.errFor {
+		return "", f.err
+	}
 	full := ""
 	for _, d := range f.reply {
 		full += d
@@ -112,6 +119,37 @@ func TestChatServiceTuned(t *testing.T) {
 	}
 	if len(gen.got.History) != tunedHistoryLimit {
 		t.Errorf("history = %d, want %d", len(gen.got.History), tunedHistoryLimit)
+	}
+}
+
+func TestChatServiceTunedFallback(t *testing.T) {
+	ctx := context.Background()
+	chars := memory.NewCharacterRepo()
+	chars.Save(ctx, model.Character{ID: "c", SystemPrompt: "sys", BaseModel: "base-model", TunedModel: "tuned-model"})
+	gen := &fakeLLM{reply: []string{"こんにちは"}, errFor: "tuned-model", err: fmt.Errorf("%w: 429", llm.ErrQuotaExceeded)}
+	msgs := memory.NewMessageRepo()
+	svc := NewChatService(chars, msgs, gen, nil)
+
+	in := ChatInput{SessionID: "s", CharacterID: "c", Variant: model.VariantTuned, Message: "やあ"}
+	res, err := svc.Chat(ctx, in, func(string) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Fallback || res.Reply != "こんにちは" {
+		t.Fatalf("result = %+v", res)
+	}
+	if gen.got.Model != "base-model" || gen.got.SystemPrompt != "sys" {
+		t.Fatalf("プロンプト版で作り直すはず: %+v", gen.got)
+	}
+	saved, _ := msgs.History(ctx, repository.HistoryQuery{SessionID: "s", CharacterID: "c", Variant: model.VariantTuned})
+	if len(saved) != 2 || !saved[1].Fallback {
+		t.Fatalf("saved = %+v", saved)
+	}
+
+	// 上限以外のエラーは作り直さない
+	gen.err = errors.New("boom")
+	if _, err := svc.Chat(ctx, in, func(string) error { return nil }); err == nil {
+		t.Fatal("上限以外のエラーはそのまま返すはず")
 	}
 }
 

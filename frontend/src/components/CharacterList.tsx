@@ -27,14 +27,7 @@ export default function CharacterList() {
             href={`/chat/${encodeURIComponent(c.id)}`}
             className="block rounded-lg border border-line p-4 hover:bg-surface"
           >
-            <div className="flex items-center gap-2">
-              <span className="font-bold">{c.name}</span>
-              {c.hasTuned && (
-                <span className="rounded bg-accent px-1.5 py-0.5 text-xs text-accent-foreground">
-                  チューニング版あり
-                </span>
-              )}
-            </div>
+            <span className="font-bold">{c.name}</span>
             <p className="mt-1 text-sm text-muted">{c.description}</p>
           </Link>
         </li>

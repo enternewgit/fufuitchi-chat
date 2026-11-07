@@ -36,6 +36,7 @@ export type Message = {
   content: string;
   createdAt: string;
   overlap?: Overlap;
+  fallback?: boolean; // チューニング版が上限に達し、プロンプト版で返答した
 };
 
 export type SessionSummary = {
@@ -49,5 +50,5 @@ export type SessionSummary = {
 // POST /api/chat が SSE で送ってくるイベント
 export type ChatEvent =
   | { type: "delta"; text: string }
-  | { type: "done"; overlap?: Overlap }
+  | { type: "done"; overlap?: Overlap; fallback?: boolean }
   | { type: "error"; error: string };

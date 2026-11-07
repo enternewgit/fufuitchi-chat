@@ -5,12 +5,16 @@ package llm
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"google.golang.org/genai"
 
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/model"
 )
+
+// ErrQuotaExceeded は Google 側の上限（割り当て）を超えたときのエラー（HTTP 429 / RESOURCE_EXHAUSTED）。
+var ErrQuotaExceeded = errors.New("llm: quota exceeded")
 
 // Generator は service から使うモデル呼び出しの interface。テストで差し替えられるようにする。
 type Generator interface {
@@ -78,6 +82,9 @@ func (c *Client) Stream(ctx context.Context, req Request, onDelta func(string) e
 	var full strings.Builder
 	for resp, err := range c.c.Models.GenerateContentStream(ctx, req.Model, contents, config) {
 		if err != nil {
+			if isQuotaExceeded(err) {
+				err = fmt.Errorf("%w: %v", ErrQuotaExceeded, err)
+			}
 			return full.String(), err
 		}
 		text := resp.Text()
@@ -90,4 +97,16 @@ func (c *Client) Stream(ctx context.Context, req Request, onDelta func(string) e
 		}
 	}
 	return full.String(), nil
+}
+
+func isQuotaExceeded(err error) bool {
+	var v genai.APIError
+	if errors.As(err, &v) {
+		return v.Code == 429 || v.Status == "RESOURCE_EXHAUSTED"
+	}
+	var p *genai.APIError
+	if errors.As(err, &p) && p != nil {
+		return p.Code == 429 || p.Status == "RESOURCE_EXHAUSTED"
+	}
+	return false
 }

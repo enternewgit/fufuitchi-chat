@@ -54,6 +54,8 @@ type Message struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	// Overlap は返答が学習データとどれくらい一致したか。model の発言のみ。
 	Overlap *Overlap `json:"overlap,omitempty"`
+	// Fallback はチューニング版が上限に達したため、プロンプト版のモデルで返答したかどうか。
+	Fallback bool `json:"fallback,omitempty"`
 }
 
 // Overlap は返答と学習データのお返事の重なり。

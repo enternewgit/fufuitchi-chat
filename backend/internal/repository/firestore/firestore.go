@@ -151,10 +151,11 @@ type messageDoc struct {
 	Content     string      `firestore:"content"`
 	CreatedAt   time.Time   `firestore:"createdAt"`
 	Overlap     *overlapDoc `firestore:"overlap,omitempty"`
+	Fallback    bool        `firestore:"fallback,omitempty"`
 }
 
 func toMessageDoc(m model.Message) messageDoc {
-	d := messageDoc{m.SessionID, m.CharacterID, string(m.Variant), m.Role, m.Content, m.CreatedAt, nil}
+	d := messageDoc{m.SessionID, m.CharacterID, string(m.Variant), m.Role, m.Content, m.CreatedAt, nil, m.Fallback}
 	if m.Overlap != nil {
 		d.Overlap = &overlapDoc{m.Overlap.Longest, m.Overlap.Exact}
 	}
@@ -164,7 +165,7 @@ func toMessageDoc(m model.Message) messageDoc {
 func (d messageDoc) model() model.Message {
 	m := model.Message{
 		SessionID: d.SessionID, CharacterID: d.CharacterID, Variant: model.Variant(d.Variant),
-		Role: d.Role, Content: d.Content, CreatedAt: d.CreatedAt,
+		Role: d.Role, Content: d.Content, CreatedAt: d.CreatedAt, Fallback: d.Fallback,
 	}
 	if d.Overlap != nil {
 		m.Overlap = &model.Overlap{Longest: d.Overlap.Longest, Exact: d.Overlap.Exact}

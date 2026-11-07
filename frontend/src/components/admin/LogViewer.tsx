@@ -122,6 +122,7 @@ export default function LogViewer() {
                 <div className="text-xs text-muted">
                   {formatTime(m.createdAt)}・{m.role === "user" ? "ユーザー" : charName(m.characterId)}
                   （{VARIANT_LABEL[m.variant]}）
+                  {m.fallback && "・上限のためプロンプト版で代替"}
                   {m.overlap && `・${formatOverlap(m.overlap)}`}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{m.content}</p>
