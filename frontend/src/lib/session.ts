@@ -23,3 +23,21 @@ export function resetSessionId(): void {
     // 使えない環境では何もしない
   }
 }
+
+// ユーザーID（ブラウザごと）。「新しい会話」を始めても変わらないので、
+// つくよみちゃんが前の会話を覚えているのに使う
+const USER_KEY = "fufuitchi-user-id";
+
+export function getUserId(): string {
+  try {
+    let id = localStorage.getItem(USER_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(USER_KEY, id);
+    }
+    return id;
+  } catch {
+    // localStorage が使えない環境では前の会話を引き継がない
+    return "";
+  }
+}

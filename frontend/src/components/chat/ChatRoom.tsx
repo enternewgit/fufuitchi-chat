@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fetchCharacter, sendMessage } from "@/lib/api";
-import { getSessionId, resetSessionId } from "@/lib/session";
+import { getSessionId, getUserId, resetSessionId } from "@/lib/session";
 import type { PublicCharacter, Variant } from "@/types";
 import ChatInput from "./ChatInput";
 import MessageList, { type ChatMessage } from "./MessageList";
@@ -45,7 +45,7 @@ export default function ChatRoom({ characterId }: { characterId: string }) {
 
     try {
       await sendMessage(
-        { characterId, sessionId: getSessionId(), variant, message: text },
+        { userId: getUserId(), characterId, sessionId: getSessionId(), variant, message: text },
         (delta) => updateLast((m) => ({ ...m, content: m.content + delta })),
         abort.signal,
       );

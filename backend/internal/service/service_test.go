@@ -154,6 +154,32 @@ func TestChatServiceTunedFallback(t *testing.T) {
 	}
 }
 
+func TestChatServiceRemembersPastSessions(t *testing.T) {
+	ctx := context.Background()
+	chars := memory.NewCharacterRepo()
+	chars.Save(ctx, model.Character{ID: "c", BaseModel: "base-model", TunedModel: "tuned-model"})
+	gen := &fakeLLM{reply: []string{"はい"}}
+	svc := NewChatService(chars, memory.NewMessageRepo(), gen, nil)
+	noop := func(string) error { return nil }
+
+	svc.Chat(ctx, ChatInput{UserID: "u", SessionID: "s1", CharacterID: "c", Variant: model.VariantTuned, Message: "私はたろうです"}, noop)
+	// 別の人の会話は混ざらない
+	svc.Chat(ctx, ChatInput{UserID: "other", SessionID: "s9", CharacterID: "c", Variant: model.VariantTuned, Message: "私は花子です"}, noop)
+	// 新しい会話でも、同じユーザーの前の会話が先頭に入る
+	svc.Chat(ctx, ChatInput{UserID: "u", SessionID: "s2", CharacterID: "c", Variant: model.VariantTuned, Message: "私の名前は？"}, noop)
+
+	h := gen.got.History
+	if len(h) != 2 || h[0].Content != "私はたろうです" || h[0].SessionID != "s1" {
+		t.Fatalf("history = %+v", h)
+	}
+
+	// ユーザーIDがなければ引き継がない
+	svc.Chat(ctx, ChatInput{SessionID: "s3", CharacterID: "c", Variant: model.VariantTuned, Message: "こんにちは"}, noop)
+	if len(gen.got.History) != 0 {
+		t.Fatalf("history = %+v", gen.got.History)
+	}
+}
+
 func TestChatServiceErrors(t *testing.T) {
 	ctx := context.Background()
 	chars := memory.NewCharacterRepo()

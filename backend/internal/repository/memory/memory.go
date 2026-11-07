@@ -121,6 +121,21 @@ func (r *MessageRepo) History(ctx context.Context, q repository.HistoryQuery) ([
 	return out, nil
 }
 
+func (r *MessageRepo) UserHistory(ctx context.Context, q repository.UserHistoryQuery) ([]model.Message, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []model.Message
+	for _, m := range r.msgs {
+		if m.UserID == q.UserID && m.CharacterID == q.CharacterID && m.Variant == q.Variant && m.SessionID != q.ExcludeSessionID {
+			out = append(out, m)
+		}
+	}
+	if q.Limit > 0 && len(out) > q.Limit {
+		out = out[len(out)-q.Limit:]
+	}
+	return out, nil
+}
+
 func (r *MessageRepo) ListSessions(ctx context.Context, f repository.SessionFilter) ([]model.SessionSummary, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

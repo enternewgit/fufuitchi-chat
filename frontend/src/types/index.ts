@@ -29,6 +29,7 @@ export type Overlap = {
 export type Variant = "base" | "tuned";
 
 export type Message = {
+  userId?: string;
   sessionId: string;
   characterId: string;
   variant: Variant;

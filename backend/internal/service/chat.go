@@ -18,6 +18,8 @@ import (
 const (
 	baseHistoryLimit  = 20
 	tunedHistoryLimit = 0
+	// pastSessionLimit は、同じユーザーの前の会話から引き継ぐ発言数（10往復分）
+	pastSessionLimit = 20
 )
 
 var (
@@ -38,6 +40,7 @@ func NewChatService(chars repository.CharacterRepository, messages repository.Me
 }
 
 type ChatInput struct {
+	UserID      string // 空なら前の会話は引き継がない
 	SessionID   string
 	CharacterID string
 	Variant     model.Variant
@@ -82,6 +85,21 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 	if err != nil {
 		return ChatResult{}, err
 	}
+	// 同じユーザーの前の会話の直近の発言を、今の会話の前に足す。
+	// 「新しい会話」を始めても、前に話したことを覚えているようにするため
+	if in.UserID != "" {
+		past, err := s.messages.UserHistory(ctx, repository.UserHistoryQuery{
+			UserID:           in.UserID,
+			CharacterID:      in.CharacterID,
+			Variant:          in.Variant,
+			ExcludeSessionID: in.SessionID,
+			Limit:            pastSessionLimit,
+		})
+		if err != nil {
+			return ChatResult{}, err
+		}
+		history = append(past, history...)
+	}
 
 	userAt := s.now()
 	sent := false
@@ -120,7 +138,7 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput, onDelta func(strin
 		}
 	}
 
-	base := model.Message{SessionID: in.SessionID, CharacterID: in.CharacterID, Variant: in.Variant}
+	base := model.Message{UserID: in.UserID, SessionID: in.SessionID, CharacterID: in.CharacterID, Variant: in.Variant}
 	user, bot := base, base
 	user.Role, user.Content, user.CreatedAt = "user", in.Message, userAt
 	bot.Role, bot.Content, bot.CreatedAt, bot.Overlap, bot.Fallback = "model", reply, s.now(), overlap, fallback

@@ -76,3 +76,23 @@ func TestMessageRepoListSessions(t *testing.T) {
 		t.Fatalf("ListSessions(To) = %+v", got)
 	}
 }
+
+func TestMessageRepoUserHistory(t *testing.T) {
+	ctx := context.Background()
+	r := NewMessageRepo()
+	msg := func(user, session, content string) model.Message {
+		return model.Message{UserID: user, SessionID: session, CharacterID: "c", Variant: model.VariantTuned, Content: content}
+	}
+	r.Append(ctx,
+		msg("u1", "old", "1"),
+		msg("u1", "old", "2"),
+		msg("u2", "other", "x"),
+		msg("u1", "now", "3"),
+	)
+	got, _ := r.UserHistory(ctx, repository.UserHistoryQuery{
+		UserID: "u1", CharacterID: "c", Variant: model.VariantTuned, ExcludeSessionID: "now", Limit: 1,
+	})
+	if len(got) != 1 || got[0].Content != "2" {
+		t.Fatalf("UserHistory = %+v", got)
+	}
+}

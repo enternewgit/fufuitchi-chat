@@ -29,6 +29,7 @@ func NewChatHandler(svc *service.ChatService) *ChatHandler {
 }
 
 type chatRequest struct {
+	UserID      string        `json:"userId"`
 	CharacterID string        `json:"characterId"`
 	SessionID   string        `json:"sessionId"`
 	Variant     model.Variant `json:"variant"`
@@ -77,6 +78,7 @@ func (h *ChatHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.svc.Chat(r.Context(), service.ChatInput{
+		UserID:      req.UserID,
 		SessionID:   req.SessionID,
 		CharacterID: req.CharacterID,
 		Variant:     req.Variant,
@@ -98,6 +100,8 @@ func validateChat(req chatRequest) string {
 		return "characterId が不正です"
 	case req.SessionID == "" || len(req.SessionID) > maxIDLen:
 		return "sessionId が不正です"
+	case len(req.UserID) > maxIDLen:
+		return "userId が不正です"
 	case !req.Variant.Valid():
 		return "variant は base か tuned です"
 	case req.Message == "":

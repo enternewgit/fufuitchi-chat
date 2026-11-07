@@ -46,6 +46,8 @@ func (v Variant) Valid() bool {
 
 // Message は会話の1発言。
 type Message struct {
+	// UserID はブラウザごとのユーザーID。会話（セッション）をまたいで同じ人を見分けるのに使う
+	UserID      string    `json:"userId,omitempty"`
 	SessionID   string    `json:"sessionId"`
 	CharacterID string    `json:"characterId"`
 	Variant     Variant   `json:"variant"`

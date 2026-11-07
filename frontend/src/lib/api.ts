@@ -26,6 +26,7 @@ export async function fetchCharacter(id: string): Promise<PublicCharacter> {
 }
 
 export type SendMessageInput = {
+  userId: string;
   characterId: string;
   sessionId: string;
   variant: Variant;

@@ -144,6 +144,7 @@ type overlapDoc struct {
 }
 
 type messageDoc struct {
+	UserID      string      `firestore:"userId,omitempty"`
 	SessionID   string      `firestore:"sessionId"`
 	CharacterID string      `firestore:"characterId"`
 	Variant     string      `firestore:"variant"`
@@ -155,7 +156,7 @@ type messageDoc struct {
 }
 
 func toMessageDoc(m model.Message) messageDoc {
-	d := messageDoc{m.SessionID, m.CharacterID, string(m.Variant), m.Role, m.Content, m.CreatedAt, nil, m.Fallback}
+	d := messageDoc{m.UserID, m.SessionID, m.CharacterID, string(m.Variant), m.Role, m.Content, m.CreatedAt, nil, m.Fallback}
 	if m.Overlap != nil {
 		d.Overlap = &overlapDoc{m.Overlap.Longest, m.Overlap.Exact}
 	}
@@ -164,7 +165,7 @@ func toMessageDoc(m model.Message) messageDoc {
 
 func (d messageDoc) model() model.Message {
 	m := model.Message{
-		SessionID: d.SessionID, CharacterID: d.CharacterID, Variant: model.Variant(d.Variant),
+		UserID: d.UserID, SessionID: d.SessionID, CharacterID: d.CharacterID, Variant: model.Variant(d.Variant),
 		Role: d.Role, Content: d.Content, CreatedAt: d.CreatedAt, Fallback: d.Fallback,
 	}
 	if d.Overlap != nil {
@@ -250,6 +251,26 @@ func (r *MessageRepo) History(ctx context.Context, q repository.HistoryQuery) ([
 		Where("variant", "==", string(q.Variant)))
 	if err != nil {
 		return nil, err
+	}
+	if q.Limit > 0 && len(out) > q.Limit {
+		out = out[len(out)-q.Limit:]
+	}
+	return out, nil
+}
+
+func (r *MessageRepo) UserHistory(ctx context.Context, q repository.UserHistoryQuery) ([]model.Message, error) {
+	all, err := r.sessionMessages(ctx, r.c.Collection(colMessages).
+		Where("userId", "==", q.UserID).
+		Where("characterId", "==", q.CharacterID).
+		Where("variant", "==", string(q.Variant)))
+	if err != nil {
+		return nil, err
+	}
+	out := all[:0]
+	for _, m := range all {
+		if m.SessionID != q.ExcludeSessionID {
+			out = append(out, m)
+		}
 	}
 	if q.Limit > 0 && len(out) > q.Limit {
 		out = out[len(out)-q.Limit:]

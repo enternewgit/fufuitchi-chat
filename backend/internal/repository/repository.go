@@ -28,6 +28,15 @@ type HistoryQuery struct {
 	Limit       int // 直近何件か（0 なら全件）
 }
 
+// UserHistoryQuery は、同じユーザーの過去の会話（今の会話以外）の取得条件。
+type UserHistoryQuery struct {
+	UserID           string
+	CharacterID      string
+	Variant          model.Variant
+	ExcludeSessionID string // 今の会話（これは HistoryQuery で取る）
+	Limit            int    // 直近何件か（0 なら全件）
+}
+
 // SessionFilter は管理画面の会話ログ一覧の絞り込み条件。ゼロ値の項目は絞り込まない。
 type SessionFilter struct {
 	CharacterID string
@@ -39,6 +48,8 @@ type SessionFilter struct {
 type MessageRepository interface {
 	Append(ctx context.Context, msgs ...model.Message) error
 	History(ctx context.Context, q HistoryQuery) ([]model.Message, error)
+	// UserHistory は同じユーザーの過去の会話の発言を、古い順に返す
+	UserHistory(ctx context.Context, q UserHistoryQuery) ([]model.Message, error)
 	// 管理画面用
 	ListSessions(ctx context.Context, f SessionFilter) ([]model.SessionSummary, error)
 	SessionMessages(ctx context.Context, sessionID string) ([]model.Message, error)
