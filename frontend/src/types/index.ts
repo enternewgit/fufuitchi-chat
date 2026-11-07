@@ -51,5 +51,5 @@ export type SessionSummary = {
 // POST /api/chat が SSE で送ってくるイベント
 export type ChatEvent =
   | { type: "delta"; text: string }
-  | { type: "done"; overlap?: Overlap; fallback?: boolean }
+  | { type: "done" }
   | { type: "error"; error: string };

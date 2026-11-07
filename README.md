@@ -8,8 +8,8 @@
 
 | ディレクトリ | 内容 |
 |---|---|
-| `frontend/` | Next.js（チャットUI、比較モード、管理画面） |
-| `backend/` | Go（API、会話履歴、モデル呼び出し、学習データとの一致率） |
+| `frontend/` | Next.js（チャット画面、管理画面） |
+| `backend/` | Go（API、会話の記憶、モデル呼び出し、学習データとの一致の記録） |
 | `data/characters/` | キャラシート（1ファイル1キャラの JSON） |
 | `data/raw/`, `data/processed/` | 学習データ（再配布禁止のためコミットしない） |
 

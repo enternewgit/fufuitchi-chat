@@ -70,8 +70,10 @@ func TestCORS(t *testing.T) {
 func TestLimiter(t *testing.T) {
 	l := &limiter{burst: 2, every: time.Second, buckets: map[string]*bucket{}}
 	now := time.Now()
-	if !l.allow("a", now) || !l.allow("a", now) {
-		t.Fatal("burst 分は通るはず")
+	for i := range 2 {
+		if !l.allow("a", now) {
+			t.Fatalf("burst 分は通るはず（%d回目）", i+1)
+		}
 	}
 	if l.allow("a", now) {
 		t.Fatal("burst を超えたら拒否するはず")

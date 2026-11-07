@@ -37,12 +37,11 @@ type chatRequest struct {
 }
 
 // chatEvent は SSE で送るイベント。type は "delta" / "done" / "error"。
+// 学習データとの一致やプロンプト版での代替は、会話ログにだけ記録する（画面には出さない）。
 type chatEvent struct {
-	Type     string         `json:"type"`
-	Text     string         `json:"text,omitempty"`
-	Overlap  *model.Overlap `json:"overlap,omitempty"`
-	Fallback bool           `json:"fallback,omitempty"`
-	Error    string         `json:"error,omitempty"`
+	Type  string `json:"type"`
+	Text  string `json:"text,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 // Post は POST /api/chat。返答を SSE（text/event-stream）で流す。
@@ -77,7 +76,7 @@ func (h *ChatHandler) Post(w http.ResponseWriter, r *http.Request) {
 		return rc.Flush()
 	}
 
-	res, err := h.svc.Chat(r.Context(), service.ChatInput{
+	_, err := h.svc.Chat(r.Context(), service.ChatInput{
 		UserID:      req.UserID,
 		SessionID:   req.SessionID,
 		CharacterID: req.CharacterID,
@@ -91,7 +90,7 @@ func (h *ChatHandler) Post(w http.ResponseWriter, r *http.Request) {
 		send(chatEvent{Type: "error", Error: publicError(err)})
 		return
 	}
-	send(chatEvent{Type: "done", Overlap: res.Overlap, Fallback: res.Fallback})
+	send(chatEvent{Type: "done"})
 }
 
 func validateChat(req chatRequest) string {

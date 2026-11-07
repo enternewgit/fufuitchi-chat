@@ -1,5 +1,5 @@
 // Go API を呼ぶ関数をここにまとめる（ブラウザから直接呼ぶ）
-import type { ChatEvent, Overlap, PublicCharacter, Variant } from "@/types";
+import type { ChatEvent, PublicCharacter, Variant } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -34,13 +34,11 @@ export type SendMessageInput = {
 };
 
 // sendMessage はメッセージを送り、SSE で届く返答を onDelta に少しずつ渡す。
-// 返答が終わると学習データとの重なり（学習データがない場合は undefined）と、
-// チューニング版が上限に達してプロンプト版で返答したかどうかを返す。
 export async function sendMessage(
   input: SendMessageInput,
   onDelta: (text: string) => void,
   signal?: AbortSignal,
-): Promise<{ overlap?: Overlap; fallback?: boolean }> {
+): Promise<void> {
   const res = await fetch(`${API_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -64,7 +62,7 @@ export async function sendMessage(
         if (!line.startsWith("data: ")) continue;
         const ev = JSON.parse(line.slice(6)) as ChatEvent;
         if (ev.type === "delta") onDelta(ev.text);
-        else if (ev.type === "done") return { overlap: ev.overlap, fallback: ev.fallback };
+        else if (ev.type === "done") return;
         else if (ev.type === "error") throw new Error(ev.error);
       }
     }
