@@ -24,7 +24,7 @@ export default function MessageList({
   }, [messages]);
 
   return (
-    <div className="flex-1 space-y-3 overflow-y-auto p-3" aria-live="polite">
+    <div className="flex-1 space-y-3 p-3" aria-live="polite">
       {messages.length === 0 && (
         <p className="text-sm text-muted">{characterName}に話しかけてみましょう。</p>
       )}
@@ -32,7 +32,7 @@ export default function MessageList({
         <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
           <div className="max-w-[85%]">
             <div
-              className={`whitespace-pre-wrap rounded-2xl px-3 py-2 ${
+              className={`whitespace-pre-wrap break-words rounded-2xl px-3 py-2 ${
                 m.role === "user" ? "bg-accent text-accent-foreground" : "bg-surface"
               }`}
             >
@@ -42,7 +42,8 @@ export default function MessageList({
           </div>
         </div>
       ))}
-      <div ref={bottomRef} />
+      {/* 画面下に固定した入力欄の裏に最後の吹き出しが隠れないよう、その高さ分だけ余白を取って止める */}
+      <div ref={bottomRef} className="scroll-mb-28" />
     </div>
   );
 }

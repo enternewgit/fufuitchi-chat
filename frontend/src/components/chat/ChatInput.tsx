@@ -22,7 +22,7 @@ export default function ChatInput({
 
   return (
     <form
-      className="mt-4 flex gap-2"
+      className="flex gap-2 py-3"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -42,7 +42,9 @@ export default function ChatInput({
         rows={2}
         placeholder="メッセージを入力（Shift+Enter で改行）"
         aria-label="メッセージ"
-        className="flex-1 resize-none rounded-lg border border-line bg-background px-3 py-2"
+        enterKeyHint="send"
+        // 16px 未満だと iPhone がタップ時に画面を拡大してしまう
+        className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-background px-3 py-2 text-base"
       />
       <button
         type="submit"

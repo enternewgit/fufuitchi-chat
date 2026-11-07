@@ -88,11 +88,14 @@ export default function ChatRoom({ characterId }: { characterId: string }) {
       <section className="mt-4 flex min-h-[50vh] flex-1 flex-col rounded-lg border border-line">
         <MessageList messages={messages} characterName={character.name} />
       </section>
-
-      <ChatInput onSend={send} disabled={sending} />
       <p className="mt-2 text-xs text-muted">
         会話の内容は記録され、サービスの改善のために管理者が閲覧することがあります。
       </p>
+
+      {/* 会話をスクロールしても入力欄が画面の下に見えるようにする */}
+      <div className="sticky bottom-0 bg-background pb-[env(safe-area-inset-bottom)]">
+        <ChatInput onSend={send} disabled={sending} />
+      </div>
     </main>
   );
 }
