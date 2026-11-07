@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { getLog, listCharacters, listLogs, type LogFilter } from "@/lib/admin";
-import type { Character, Message, SessionSummary } from "@/types";
-import { formatOverlap } from "@/components/chat/MessageList";
+import type { Character, Message, Overlap, SessionSummary } from "@/types";
 import MemoryStorageNote from "./MemoryStorageNote";
 
 const VARIANT_LABEL = { base: "プロンプト版", tuned: "チューニング版" } as const;
+
+// 学習データのお返事と、最長で何文字連続して同じか（記号・空白は除く）
+const formatOverlap = (o: Overlap) =>
+  o.exact ? "学習データと完全一致" : `学習データと最長 ${o.longest} 文字一致`;
 
 const formatTime = (s: string) =>
   new Date(s).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });

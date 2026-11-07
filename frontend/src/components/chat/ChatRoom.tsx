@@ -44,12 +44,12 @@ export default function ChatRoom({ characterId }: { characterId: string }) {
     ]);
 
     try {
-      const { overlap, fallback } = await sendMessage(
+      await sendMessage(
         { characterId, sessionId: getSessionId(), variant, message: text },
         (delta) => updateLast((m) => ({ ...m, content: m.content + delta })),
         abort.signal,
       );
-      updateLast((m) => ({ ...m, pending: false, overlap, fallback }));
+      updateLast((m) => ({ ...m, pending: false }));
     } catch (e) {
       if (!abort.signal.aborted) {
         updateLast((m) => ({ ...m, pending: false, error: (e as Error).message }));

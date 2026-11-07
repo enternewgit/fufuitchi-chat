@@ -117,8 +117,9 @@ func TestChatServiceTuned(t *testing.T) {
 	if gen.got.SystemPrompt != "" {
 		t.Errorf("チューニング版には TunedSystemPrompt（空）を渡すはず: %q", gen.got.SystemPrompt)
 	}
-	if len(gen.got.History) != tunedHistoryLimit {
-		t.Errorf("history = %d, want %d", len(gen.got.History), tunedHistoryLimit)
+	// 履歴の上限はないので、それまでの4往復（8発言）が全部渡る
+	if len(gen.got.History) != 8 {
+		t.Errorf("history = %d, want 8", len(gen.got.History))
 	}
 }
 

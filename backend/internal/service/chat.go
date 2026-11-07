@@ -12,12 +12,12 @@ import (
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/repository"
 )
 
-// モデルに渡す直近の発言数。
-// チューニング版は長くても2往復の会話で学習したので、長い履歴を渡すと
-// 過去の言い回しに引っぱられやすい。学習データに近い3往復までにする
+// モデルに渡す直近の発言数（0 なら会話の最初から全部渡す）。
+// チューニング版はチャットの本体なので、会話全体を覚えさせる。
+// ただし長い会話では、過去の言い回しを繰り返しやすくなることがある
 const (
 	baseHistoryLimit  = 20
-	tunedHistoryLimit = 6
+	tunedHistoryLimit = 0
 )
 
 var (
