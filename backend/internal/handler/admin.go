@@ -138,6 +138,21 @@ func (h *AdminHandler) GetLog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, msgs)
 }
 
+// DeleteLog は DELETE /api/admin/logs/{sessionId}。会話の発言をすべて消す。
+// 前の会話の記憶にも使われなくなる。
+func (h *AdminHandler) DeleteLog(w http.ResponseWriter, r *http.Request) {
+	err := h.messages.DeleteSession(r.Context(), r.PathValue("sessionId"))
+	if errors.Is(err, repository.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		h.internal(w, "delete session", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *AdminHandler) internal(w http.ResponseWriter, what string, err error) {
 	log.Printf("admin: %s: %v", what, err)
 	writeError(w, http.StatusInternalServerError, "internal error")

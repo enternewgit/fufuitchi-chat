@@ -177,3 +177,21 @@ func (r *MessageRepo) SessionMessages(ctx context.Context, sessionID string) ([]
 	}
 	return out, nil
 }
+
+func (r *MessageRepo) DeleteSession(ctx context.Context, sessionID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	kept := r.msgs[:0]
+	for _, m := range r.msgs {
+		if m.SessionID != sessionID {
+			kept = append(kept, m)
+		}
+	}
+	if len(kept) == len(r.msgs) {
+		return repository.ErrNotFound
+	}
+	// 消した分の要素が古いスライスに残らないようにする
+	clear(r.msgs[len(kept):])
+	r.msgs = kept
+	return nil
+}

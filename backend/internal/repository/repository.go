@@ -53,4 +53,6 @@ type MessageRepository interface {
 	// 管理画面用
 	ListSessions(ctx context.Context, f SessionFilter) ([]model.SessionSummary, error)
 	SessionMessages(ctx context.Context, sessionID string) ([]model.Message, error)
+	// DeleteSession は会話の発言をすべて消す。発言がなければ ErrNotFound
+	DeleteSession(ctx context.Context, sessionID string) error
 }

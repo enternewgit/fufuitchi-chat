@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLog, listCharacters, listLogs, type LogFilter } from "@/lib/admin";
+import { deleteLog, getLog, listCharacters, listLogs, type LogFilter } from "@/lib/admin";
 import type { Character, Message, Overlap, SessionSummary } from "@/types";
 import MemoryStorageNote from "./MemoryStorageNote";
 
@@ -46,6 +46,20 @@ export default function LogViewer() {
     setError("");
     try {
       setMessages(await getLog(sessionId));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const remove = async () => {
+    if (selected === null) return;
+    if (!confirm("この会話を削除しますか？\nつくよみちゃんの記憶からも消え、元に戻せません。")) return;
+    setError("");
+    try {
+      await deleteLog(selected);
+      setSessions((prev) => prev?.filter((s) => s.sessionId !== selected) ?? null);
+      setSelected(null);
+      setMessages([]);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -119,6 +133,17 @@ export default function LogViewer() {
 
         <div className="space-y-2 text-sm">
           {selected === null && <p className="text-muted">左の一覧から会話を選んでください</p>}
+          {selected !== null && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={remove}
+                className="rounded border border-line px-3 py-1 text-red-600 hover:bg-surface"
+              >
+                この会話を削除
+              </button>
+            </div>
+          )}
           {selected !== null &&
             messages.map((m, i) => (
               <div key={i} className="rounded border border-line p-2">

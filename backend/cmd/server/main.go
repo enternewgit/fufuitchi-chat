@@ -86,6 +86,7 @@ func main() {
 	admin.HandleFunc("DELETE /api/admin/characters/{id}", adminH.DeleteCharacter)
 	admin.HandleFunc("GET /api/admin/logs", adminH.ListLogs)
 	admin.HandleFunc("GET /api/admin/logs/{sessionId}", adminH.GetLog)
+	admin.HandleFunc("DELETE /api/admin/logs/{sessionId}", adminH.DeleteLog)
 	mux.Handle("/api/admin/", middleware.AdminAuth(sessions)(admin))
 
 	srv := &http.Server{

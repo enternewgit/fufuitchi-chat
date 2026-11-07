@@ -55,3 +55,6 @@ export const listLogs = (f: LogFilter) => {
 
 export const getLog = (sessionId: string) =>
   adminFetch<Message[]>(`logs/${encodeURIComponent(sessionId)}`);
+
+export const deleteLog = (sessionId: string) =>
+  adminFetch<void>(`logs/${encodeURIComponent(sessionId)}`, { method: "DELETE" });

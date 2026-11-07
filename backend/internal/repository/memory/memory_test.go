@@ -96,3 +96,30 @@ func TestMessageRepoUserHistory(t *testing.T) {
 		t.Fatalf("UserHistory = %+v", got)
 	}
 }
+
+func TestMessageRepoDeleteSession(t *testing.T) {
+	ctx := context.Background()
+	r := NewMessageRepo()
+	r.Append(ctx,
+		model.Message{UserID: "u", SessionID: "a", CharacterID: "c", Variant: model.VariantTuned, Content: "1"},
+		model.Message{UserID: "u", SessionID: "b", CharacterID: "c", Variant: model.VariantTuned, Content: "2"},
+		model.Message{UserID: "u", SessionID: "a", CharacterID: "c", Variant: model.VariantTuned, Content: "3"},
+	)
+	if err := r.DeleteSession(ctx, "a"); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := r.SessionMessages(ctx, "a"); len(got) != 0 {
+		t.Fatalf("削除した会話が残っている: %+v", got)
+	}
+	if got, _ := r.SessionMessages(ctx, "b"); len(got) != 1 {
+		t.Fatalf("他の会話まで消えた: %+v", got)
+	}
+	// 消した会話は、前の会話の記憶にも使われない
+	past, _ := r.UserHistory(ctx, repository.UserHistoryQuery{UserID: "u", CharacterID: "c", Variant: model.VariantTuned, ExcludeSessionID: "new"})
+	if len(past) != 1 || past[0].Content != "2" {
+		t.Fatalf("UserHistory = %+v", past)
+	}
+	if err := r.DeleteSession(ctx, "a"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("2回目の削除は ErrNotFound のはず: %v", err)
+	}
+}

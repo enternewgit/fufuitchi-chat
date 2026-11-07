@@ -282,6 +282,40 @@ func (r *MessageRepo) SessionMessages(ctx context.Context, sessionID string) ([]
 	return r.sessionMessages(ctx, r.c.Collection(colMessages).Where("sessionId", "==", sessionID))
 }
 
+func (r *MessageRepo) DeleteSession(ctx context.Context, sessionID string) error {
+	docs, err := r.c.Collection(colMessages).Where("sessionId", "==", sessionID).Documents(ctx).GetAll()
+	if err != nil {
+		return err
+	}
+	if len(docs) == 0 {
+		return repository.ErrNotFound
+	}
+	bw := r.c.BulkWriter(ctx)
+	jobs := make([]*firestore.BulkWriterJob, 0, len(docs)+1)
+	for _, d := range docs {
+		j, err := bw.Delete(d.Ref)
+		if err != nil {
+			bw.End()
+			return err
+		}
+		jobs = append(jobs, j)
+	}
+	// 一覧用の集計も消す
+	j, err := bw.Delete(r.c.Collection(colSessions).Doc(sessionID))
+	if err != nil {
+		bw.End()
+		return err
+	}
+	jobs = append(jobs, j)
+	bw.End()
+	for _, j := range jobs {
+		if _, err := j.Results(); err != nil && !isNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *MessageRepo) ListSessions(ctx context.Context, f repository.SessionFilter) ([]model.SessionSummary, error) {
 	q := r.c.Collection(colSessions).Query
 	if f.CharacterID != "" {
