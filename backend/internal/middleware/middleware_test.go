@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +14,7 @@ var ok = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 func TestAdminAuth(t *testing.T) {
 	sessions := auth.NewSessions(time.Hour)
-	token, _, err := sessions.Create("admin@example.com")
+	token, _, err := sessions.Create(context.Background(), "admin@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}

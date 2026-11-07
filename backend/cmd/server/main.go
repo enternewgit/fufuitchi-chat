@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,11 +14,15 @@ import (
 	"time"
 	_ "time/tzdata" // distroless にはタイムゾーンのデータがないので埋め込む
 
+	"cloud.google.com/go/firestore"
+
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/auth"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/config"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/handler"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/llm"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/middleware"
+	"github.com/enternewgit/fufuitchi-chat/backend/internal/repository"
+	fsrepo "github.com/enternewgit/fufuitchi-chat/backend/internal/repository/firestore"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/repository/memory"
 	"github.com/enternewgit/fufuitchi-chat/backend/internal/service"
 )
@@ -32,16 +37,15 @@ func main() {
 		log.Print("WARNING: GOOGLE_CLIENT_ID か ADMIN_EMAILS が未設定なので、管理画面にログインできません")
 	}
 
-	chars := memory.NewCharacterRepo()
-	n, err := chars.LoadDir(filepath.Join(cfg.DataDir, "characters"))
+	sessionTTL := 7 * 24 * time.Hour
+	chars, messages, sessions, closeStore, err := openStore(ctx, cfg, sessionTTL)
 	if err != nil {
-		log.Fatalf("load characters: %v", err)
+		log.Fatalf("storage: %v", err)
 	}
-	log.Printf("loaded %d characters", n)
+	defer closeStore()
 	if err := applyTunedModelEnv(ctx, chars); err != nil {
 		log.Fatalf("tuned model env: %v", err)
 	}
-	messages := memory.NewMessageRepo()
 
 	memo, err := service.LoadMemorizer(filepath.Join(cfg.DataDir, "processed"))
 	if err != nil {
@@ -57,7 +61,6 @@ func main() {
 	chatH := handler.NewChatHandler(service.NewChatService(chars, messages, gen, memo))
 	charH := handler.NewCharacterHandler(chars)
 	adminH := handler.NewAdminHandler(chars, messages)
-	sessions := auth.NewSessions(7 * 24 * time.Hour)
 	authH := handler.NewAuthHandler(auth.GoogleVerifier{ClientID: cfg.GoogleClientID}, allow, sessions)
 
 	mux := http.NewServeMux()
@@ -109,7 +112,7 @@ func main() {
 // チューニング済みモデルのエンドポイントはプロジェクトごとに違うので、
 // キャラシート（リポジトリに入れる）ではなく .env に置く。
 // キャラIDは大文字にし、- を _ に置き換える（例: tsukuyomi → TUNED_MODEL_TSUKUYOMI）。
-func applyTunedModelEnv(ctx context.Context, chars *memory.CharacterRepo) error {
+func applyTunedModelEnv(ctx context.Context, chars repository.CharacterRepository) error {
 	cs, err := chars.List(ctx)
 	if err != nil {
 		return err
@@ -127,4 +130,41 @@ func applyTunedModelEnv(ctx context.Context, chars *memory.CharacterRepo) error 
 		log.Printf("%s: tuned model from %s", c.ID, key)
 	}
 	return nil
+}
+
+// openStore は STORAGE の設定に合わせて保存先を開く。
+// キャラ設定は data/characters/ から読み、firestore のときはまだないキャラだけを追加する。
+func openStore(ctx context.Context, cfg config.Config, sessionTTL time.Duration) (
+	repository.CharacterRepository, repository.MessageRepository, auth.SessionStore, func(), error,
+) {
+	seed := memory.NewCharacterRepo()
+	n, err := seed.LoadDir(filepath.Join(cfg.DataDir, "characters"))
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("load characters: %w", err)
+	}
+	log.Printf("loaded %d characters from files", n)
+
+	switch cfg.Storage {
+	case "memory":
+		log.Print("storage: memory（再起動するとデータは消えます）")
+		return seed, memory.NewMessageRepo(), auth.NewSessions(sessionTTL), func() {}, nil
+	case "firestore":
+		if cfg.ProjectID == "" {
+			return nil, nil, nil, nil, errors.New("STORAGE=firestore には GOOGLE_CLOUD_PROJECT が必要です")
+		}
+		client, err := firestore.NewClientWithDatabase(ctx, cfg.ProjectID, cfg.FirestoreDatabase)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		chars := fsrepo.NewCharacterRepo(client)
+		cs, _ := seed.List(ctx)
+		added, err := chars.Seed(ctx, cs)
+		if err != nil {
+			client.Close()
+			return nil, nil, nil, nil, fmt.Errorf("seed characters: %w", err)
+		}
+		log.Printf("storage: firestore (%s), %d characters added", cfg.FirestoreDatabase, added)
+		return chars, fsrepo.NewMessageRepo(client), fsrepo.NewSessionStore(client, sessionTTL), func() { client.Close() }, nil
+	}
+	return nil, nil, nil, nil, fmt.Errorf("STORAGE は memory か firestore です: %q", cfg.Storage)
 }

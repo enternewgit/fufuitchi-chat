@@ -27,25 +27,25 @@ func TestSessions(t *testing.T) {
 	s := NewSessions(time.Hour)
 	s.now = func() time.Time { return now }
 
-	token, sess, err := s.Create("admin@example.com")
+	token, sess, err := s.Create(context.Background(), "admin@example.com")
 	if err != nil || len(token) < 40 || sess.Email != "admin@example.com" {
 		t.Fatalf("Create = %q, %+v, %v", token, sess, err)
 	}
-	if other, _, _ := s.Create("admin@example.com"); other == token {
+	if other, _, _ := s.Create(context.Background(), "admin@example.com"); other == token {
 		t.Fatal("トークンは毎回ちがうはず")
 	}
-	if got, ok := s.Lookup(token); !ok || got.Email != "admin@example.com" {
+	if got, ok := s.Lookup(context.Background(), token); !ok || got.Email != "admin@example.com" {
 		t.Fatalf("Lookup = %+v, %v", got, ok)
 	}
 
 	now = now.Add(time.Hour)
-	if _, ok := s.Lookup(token); ok {
+	if _, ok := s.Lookup(context.Background(), token); ok {
 		t.Fatal("期限切れのセッションは無効のはず")
 	}
 
-	token, _, _ = s.Create("admin@example.com")
-	s.Delete(token)
-	if _, ok := s.Lookup(token); ok {
+	token, _, _ = s.Create(context.Background(), "admin@example.com")
+	s.Delete(context.Background(), token)
+	if _, ok := s.Lookup(context.Background(), token); ok {
 		t.Fatal("削除したセッションは無効のはず")
 	}
 }

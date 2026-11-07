@@ -34,7 +34,26 @@ docker compose up --build
 3. `.env` の `GOOGLE_CLIENT_ID` にクライアントID、`ADMIN_EMAILS` に自分のメールアドレスを入れる
 4. `docker compose up --build`（クライアントIDは frontend のビルド時に埋め込まれる）
 
-キャラ設定と会話ログはメモリに保存されるので、backend を再起動すると `data/characters/` の内容に戻り、ログは消えます。
+### 保存先
+
+`.env` の `STORAGE` で選べます。
+
+| `STORAGE` | 会話ログ・管理画面での編集・ログイン状態 |
+|---|---|
+| `memory`（初期値） | backend のメモリ。再起動すると消える |
+| `firestore` | Firestore に保存。再起動しても残る |
+
+Firestore を使うときは、`gcloud auth application-default login` を済ませ、`GOOGLE_CLOUD_PROJECT` を設定して、`docker-compose.vertex.yml` を重ねて起動します。
+キャラ設定は起動時に `data/characters/` から読み、Firestore にまだないキャラだけを追加します（管理画面での編集は上書きしません）。
+
+Firestore のコレクション:
+
+| コレクション | 中身 |
+|---|---|
+| `characters/{キャラID}` | キャラ設定 |
+| `messages/{自動ID}` | 会話の1発言 |
+| `sessions/{セッションID}` | 会話セッションの集計（管理画面の一覧用） |
+| `adminSessions/{トークンのハッシュ}` | 管理者のログインセッション（トークンそのものは保存しない） |
 
 ## 学習データ
 

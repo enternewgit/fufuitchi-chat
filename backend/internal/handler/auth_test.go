@@ -55,7 +55,7 @@ func TestGoogleLogin(t *testing.T) {
 		}
 		var res loginResponse
 		json.NewDecoder(rec.Body).Decode(&res)
-		if _, ok := sessions.Lookup(res.Token); !ok || res.Email != "admin@example.com" {
+		if _, ok := sessions.Lookup(context.Background(), res.Token); !ok || res.Email != "admin@example.com" {
 			t.Errorf("発行したセッションが無効: %+v", res)
 		}
 	}
@@ -63,13 +63,13 @@ func TestGoogleLogin(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	sessions := auth.NewSessions(time.Hour)
-	token, _, _ := sessions.Create("admin@example.com")
+	token, _, _ := sessions.Create(context.Background(), "admin@example.com")
 	h := NewAuthHandler(fakeVerifier{}, auth.Allowlist{}, sessions)
 
 	req := httptest.NewRequest("POST", "/api/auth/logout", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	h.Logout(httptest.NewRecorder(), req)
-	if _, ok := sessions.Lookup(token); ok {
+	if _, ok := sessions.Lookup(context.Background(), token); ok {
 		t.Fatal("ログアウト後もセッションが残っている")
 	}
 }

@@ -15,7 +15,7 @@ import (
 
 // AdminAuth は Authorization: Bearer <セッショントークン> が有効なセッションか確認する。
 // 有効なら、ログイン中の管理者を context に入れて次に渡す。
-func AdminAuth(sessions *auth.Sessions) func(http.Handler) http.Handler {
+func AdminAuth(sessions auth.SessionStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -23,7 +23,7 @@ func AdminAuth(sessions *auth.Sessions) func(http.Handler) http.Handler {
 				writeError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
-			sess, ok := sessions.Lookup(token)
+			sess, ok := sessions.Lookup(r.Context(), token)
 			if !ok {
 				writeError(w, http.StatusUnauthorized, "unauthorized")
 				return

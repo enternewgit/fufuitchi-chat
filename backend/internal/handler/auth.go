@@ -12,10 +12,10 @@ import (
 type AuthHandler struct {
 	verifier auth.Verifier
 	allow    auth.Allowlist
-	sessions *auth.Sessions
+	sessions auth.SessionStore
 }
 
-func NewAuthHandler(v auth.Verifier, allow auth.Allowlist, sessions *auth.Sessions) *AuthHandler {
+func NewAuthHandler(v auth.Verifier, allow auth.Allowlist, sessions auth.SessionStore) *AuthHandler {
 	return &AuthHandler{verifier: v, allow: allow, sessions: sessions}
 }
 
@@ -49,7 +49,7 @@ func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, sess, err := h.sessions.Create(id.Email)
+	token, sess, err := h.sessions.Create(r.Context(), id.Email)
 	if err != nil {
 		log.Printf("auth: create session: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
@@ -62,7 +62,9 @@ func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 // Logout は POST /api/auth/logout。セッションを削除する。
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
-		h.sessions.Delete(token)
+		if err := h.sessions.Delete(r.Context(), token); err != nil {
+			log.Printf("auth: delete session: %v", err)
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

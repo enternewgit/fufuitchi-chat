@@ -82,6 +82,24 @@ type Session struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
+// SessionStore はセッションの保存先。memory / firestore を差し替えられるようにする。
+type SessionStore interface {
+	// Create は新しいセッションを作り、そのトークンを返す。
+	Create(ctx context.Context, email string) (string, Session, error)
+	// Lookup は有効なセッションを返す。期限切れや保存先のエラーのときは ok=false（安全側に倒す）。
+	Lookup(ctx context.Context, token string) (Session, bool)
+	Delete(ctx context.Context, token string) error
+}
+
+// NewToken はセッショントークン（推測できないランダムな文字列）を作る。
+func NewToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
 // Sessions はセッションをメモリに保存する。backend を再起動すると全員ログアウトになる。
 type Sessions struct {
 	mu  sync.Mutex
@@ -94,13 +112,11 @@ func NewSessions(ttl time.Duration) *Sessions {
 	return &Sessions{m: map[string]Session{}, ttl: ttl, now: time.Now}
 }
 
-// Create は新しいセッションを作り、そのトークンを返す。
-func (s *Sessions) Create(email string) (string, Session, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+func (s *Sessions) Create(ctx context.Context, email string) (string, Session, error) {
+	token, err := NewToken()
+	if err != nil {
 		return "", Session{}, err
 	}
-	token := base64.RawURLEncoding.EncodeToString(b)
 	sess := Session{Email: email, ExpiresAt: s.now().Add(s.ttl)}
 
 	s.mu.Lock()
@@ -115,8 +131,7 @@ func (s *Sessions) Create(email string) (string, Session, error) {
 	return token, sess, nil
 }
 
-// Lookup は有効なセッションを返す。期限切れなら削除して ok=false。
-func (s *Sessions) Lookup(token string) (Session, bool) {
+func (s *Sessions) Lookup(ctx context.Context, token string) (Session, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.m[token]
@@ -130,10 +145,11 @@ func (s *Sessions) Lookup(token string) (Session, bool) {
 	return sess, true
 }
 
-func (s *Sessions) Delete(token string) {
+func (s *Sessions) Delete(ctx context.Context, token string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.m, token)
+	return nil
 }
 
 type ctxKey struct{}
