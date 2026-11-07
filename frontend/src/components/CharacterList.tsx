@@ -28,7 +28,7 @@ export default function CharacterList() {
             className="block rounded-lg border border-line p-4 hover:bg-surface"
           >
             <span className="font-bold">{c.name}</span>
-            <p className="mt-1 text-sm text-muted">{c.description}</p>
+            {c.description && <p className="mt-1 text-sm text-muted">{c.description}</p>}
           </Link>
         </li>
       ))}
